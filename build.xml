@@ -1,0 +1,12 @@
+<!-- to build type in ant into terminal. Then setenv to set environment-->	
+<project default="compile">
+ 	<target name="compile">
+	<!--<target name="clean">-->	
+		<!--<delete file="file name">-->
+	<!--</target>-->
+
+		<javac srcdir="." destdir="." includeantruntime="false"/>	
+	</target>
+</project>
+
+
