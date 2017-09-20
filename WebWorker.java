@@ -27,17 +27,17 @@
 //string split command to seperate the second value of "Request line: (GET /test.html HTTP/1.1)"
 //convert html to getByte. 
 
-//import java.io.FileReader;
-//import java.io.BufferedReader;
-//import java.io.FileReader;
-//import java.io.IOException;
+import java.io.FileReader;
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.net.Socket;
 import java.lang.Runnable;
 import java.io.*;
 import java.util.Date;
 import java.text.DateFormat;
+import javax.imageio.ImageIO;
 import java.util.TimeZone;
-
+import java.awt.image.BufferedImage;
 public class WebWorker implements Runnable
 {
 
@@ -59,13 +59,59 @@ public WebWorker(Socket s)
 **/
 public void run()
 {
+   String completeTextFile="";
+   String completeBinaryNum ="";
+   int finalBinary = 0;
    System.err.println("Handling connection...");
    try {
       InputStream  is = socket.getInputStream();
       OutputStream os = socket.getOutputStream();
-      String grabbedHTMLFile = readHTTPRequest(is, os);
-      writeHTTPHeader(os,"text/html");
-      writeContent(os , grabbedHTMLFile);
+      String grabbedHTMLFile = readHTTPRequest(is);
+      BufferedReader readHTMLFile = null;
+
+      String[] p = grabbedHTMLFile.split("\\.");
+      if(p[1].equals("html")){
+	     try{
+		readHTMLFile = new BufferedReader(new FileReader(System.getProperty("user.dir") + grabbedHTMLFile));	
+
+		String line = "";
+		while((line = readHTMLFile.readLine()) != null){
+		  if (line.equals("<cs371date>")){
+		     	Date date = new Date();
+			line = date.toString();
+		  }
+		  if (line.equals("<cs371server>")){
+			line = " Destoni's Server";
+		  }
+		  completeTextFile += line;  	
+		}
+	
+	      }catch(Exception ex) {
+		System.out.println("File not found");
+		writeContent(os, "404 File Not Found.");
+	      }
+	      writeHTTPHeader(os,"text/html"); 
+ 	      writeContent(os , completeTextFile);
+      
+      }else if(p[1].equals("gif") || p[1].equals("jpg") || p[1].equals("png")){
+	      try{
+		FileInputStream readFile = new FileInputStream(System.getProperty("user.dir") + grabbedHTMLFile);	
+		
+		int binaryNum;
+		while((binaryNum = readFile.read()) != -1){
+			completeBinaryNum += Integer.toString(binaryNum);
+			
+		}
+		finalBinary = Integer.parseInt(completeBinaryNum);
+              }catch(Exception ex) {
+		System.out.println("File not found\n" + ex);
+		writeContent(os, "404 File Not Found.");
+	      }
+	      writeHTTPHeader(os,"image/" + p[1] ); 
+	      writeContentForImage(os , finalBinary);
+      	      //writeContent(os, completeBinaryNum);
+	}
+           
       os.flush();
       socket.close();
    } catch (Exception e) {
@@ -78,57 +124,20 @@ public void run()
 /**
 * Read the HTTP request header.
 **/
-private String readHTTPRequest(InputStream is, OutputStream os) throws Exception
+private String readHTTPRequest(InputStream is) throws Exception
 {
    String line;
    String completeTextFile = "";
    BufferedReader r = new BufferedReader(new InputStreamReader(is));
-   
-   while (true) {
-	//add an increment
+   String Path = "";
       try {
-         while (!r.ready()) Thread.sleep(1);
-	 
-         line = r.readLine();
-         System.err.println("Request line: ("+line+")");
-         if (line.length()==0) break;
-	 
-	 //check if Request Line has the letters "GET" then after a space
-	 //get path. 
-
-	 String Path = "";
-	 String getPath[] = new String[3];
-	 if(line.contains("GET") && !(line.contains("favicon.ico"))){
-		System.out.println("--found line with GET--");
-		getPath = line.split(" ");				
-		Path = getPath[1];
-		System.out.println("--Path returned--" + Path);	 	
-	}
-	writeContent(os, "<h3>404 File Not Found</h3>");	
-	
-	//Looping until file is found from filereader then place file into
-	//BufferReader readHTMLFile
-	//BufferedReader readHTMLFile = new BufferedReader(new FileReader(""));	
-	//while(!readHTMLFile.ready() && readHTMLFile.){
-		FileReader file = new FileReader(Path);
-		BufferedReader readHTMLFile = new BufferedReader(file);	
-	//}
-
-	//Converting readHTMLFile to string placing result into completeTextFile
-	//String variable
-	while((completeTextFile = readHTMLFile.readLine()) != null){
-		completeTextFile += readHTMLFile.readLine();  	
-	}
-	
+        Path = r.readLine();
+        String[] p = Path.split(" ");
+        return p[1];
       } catch (Exception e) {  
 	 System.err.println("Request error: "+e);
-	 writeContent(os, "<h3>404 File Not Found</h3>");
-	 
-         break;
       }
-   }
-   //returning HTML File as a string in variable completeTextFile
-   return completeTextFile;
+   return "";
 }
 
 /**
@@ -145,7 +154,7 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
    os.write("Date: ".getBytes());
    os.write((df.format(d)).getBytes());
    os.write("\n".getBytes());
-   os.write("Server: Jon's very own server\n".getBytes());
+   os.write("Server: Destoni's\n".getBytes());
    //os.write("Last-Modified: Wed, 08 Jan 2003 23:11:55 GMT\n".getBytes());
    //os.write("Content-Length: 438\n".getBytes()); 
    os.write("Connection: close\n".getBytes());
@@ -163,8 +172,11 @@ private void writeHTTPHeader(OutputStream os, String contentType) throws Excepti
 private void writeContent(OutputStream os, String writeHTML) throws Exception
 {
    os.write(writeHTML.getBytes());
-   //os.write("<h3>My web server works!</h3>\n".getBytes());
-   //os.write("</body></html>\n".getBytes());
+}
+
+private void writeContentForImage(OutputStream os, int imageFile) throws Exception
+{
+	os.write(imageFile);
 }
 
 } // end class
